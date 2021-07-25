@@ -28,17 +28,27 @@ public class ControllerAdvisor extends ResponseEntityExceptionHandler {
     @ExceptionHandler(TransactionSystemException.class)
     public ResponseEntity<Object> handleEmployeeCreationFailedException(
             TransactionSystemException ex, WebRequest request) {
+
+        Throwable cause = ex.getRootCause();
+        if (cause instanceof ConstraintViolationException) {
+            return handleEmployeeCreationFailedException((ConstraintViolationException) cause, request);
+        }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("message", ex.getMessage());
-        Throwable cause = ex.getRootCause();
-        if (cause instanceof ConstraintViolationException) {
-            List<String> details = ((ConstraintViolationException) cause).getConstraintViolations()
-                    .parallelStream()
-                    .map(e -> e.getMessage())
-                    .collect(Collectors.toList());
-            body.put("message", details);
-        }
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleEmployeeCreationFailedException(
+            ConstraintViolationException ex, WebRequest request) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        List<String> details = (ex).getConstraintViolations()
+            .parallelStream()
+            .map(e -> e.getMessage())
+            .collect(Collectors.toList());
+        body.put("message", details);
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
